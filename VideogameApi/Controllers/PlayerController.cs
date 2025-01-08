@@ -1,44 +1,27 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using VideogameApi.Data;
 using VideogameApi.Models;
 
 namespace VideogameApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PlayerController : ControllerBase
+    public class PlayerController(PlayerDbContext context) : ControllerBase
     {
-        static private List<Player> players = new List<Player> {
-            new Player {
-                Id = 1,
-                Level = 0,
-                Name = "Spencer",
-                Score = 0,
-            },
-            new Player {
-                Id = 2,
-                Level = 0,
-                Name = "Harold",
-                Score = 0,
-            },
-            new Player {
-                Id = 3,
-                Level = 0,
-                Name = "Jacob",
-                Score = 0,
-            },
-        };
+        private readonly PlayerDbContext _context = context;
 
         [HttpGet]
-        public ActionResult<List<Player>> GetPlayers()
+        public async Task<ActionResult<List<Player>>> GetPlayers()
         {
-            return Ok(players);
+            return Ok(await _context.Players.ToListAsync());
         }
 
         [HttpGet]
         [Route("{id}")]
-        public ActionResult<Player> GetPlayerById(int id) {
-            Player? player = players.FirstOrDefault(x => x.Id == id);
+        public async Task<ActionResult<Player>> GetPlayerById(int id) {
+            Player? player = await _context.Players.FindAsync(id);
 
             if (player == null) {
                 return NotFound(); 
@@ -48,22 +31,22 @@ namespace VideogameApi.Controllers
         }
 
         [HttpPost]
-        public ActionResult<Player> AddPlayer(Player newPlayer)
+        public async Task<ActionResult<Player>> AddPlayer(Player newPlayer)
         {
             if (newPlayer == null)
                 return BadRequest();
 
-            newPlayer.Id = players.Max(x => x.Id) + 1;
+            _context.Players.Add(newPlayer);
+            await _context.SaveChangesAsync();
 
-            players.Add(newPlayer);
             return CreatedAtAction(nameof(GetPlayerById), new { id = newPlayer.Id }, newPlayer);
         }
 
         [HttpPut]
         [Route("{id}")]
-        public IActionResult UpdatePlayer(int id, Player updatedPlayer)
+        public async Task<IActionResult> UpdatePlayer(int id, Player updatedPlayer)
         {
-            Player? player = players.FirstOrDefault(x => x.Id == id);
+            Player? player = await _context.Players.FindAsync(id);
 
             if (player == null) {
                 return NotFound();
@@ -72,21 +55,26 @@ namespace VideogameApi.Controllers
             player.Level = updatedPlayer.Level;
             player.Name = updatedPlayer.Name;
             player.Score = updatedPlayer.Score;
+
+            await _context.SaveChangesAsync();
             
             return NoContent();
         }
 
         [HttpDelete]
         [Route("{id}")]
-        public IActionResult DeletePlayer(int id) {
-            Player? player = players.FirstOrDefault(x => x.Id == id);
+        public async Task<IActionResult> DeletePlayer(int id) {
+            Player? player = await _context.Players.FindAsync(id);
 
             if (player == null)
             {
                 return NotFound();
             }
 
-            players.Remove(player);
+            _context.Players.Remove(player);
+
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
     }
